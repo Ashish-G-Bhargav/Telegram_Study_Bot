@@ -30,7 +30,7 @@ telegram-study-bot
 1. Clone the repository:
    ```
    git clone <repository-url>
-   cd telegram-study-bot
+   cd Telegram_Study_Bot
    ```
 
 2. Create a virtual environment (optional but recommended):
