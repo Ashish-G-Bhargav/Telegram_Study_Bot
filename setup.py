@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="telegram-study-bot",
+    name="Telegram_Study_Bot",
     version="0.1.0",
     author="Ashish G Bhargav",
     author_email="ashishgbhargav@gmail.com",
