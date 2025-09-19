@@ -3,12 +3,12 @@ from setuptools import setup, find_packages
 setup(
     name="telegram-study-bot",
     version="0.1.0",
-    author="Your Name",
-    author_email="your.email@example.com",
+    author="Ashish G Bhargav",
+    author_email="ashishgbhargav@gmail.com",
     description="A Telegram bot for managing study materials and answering questions.",
     long_description=open('README.md').read(),
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/telegram-study-bot",
+    url="https://github.com/Ashish-G-Bhargav/Telegram_Study_Bot",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     install_requires=[
