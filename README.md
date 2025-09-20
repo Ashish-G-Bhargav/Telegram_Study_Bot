@@ -11,10 +11,11 @@ telegram-study-bot
 │   ├── scraper.py            # Web scraper for downloading study materials
 │   ├── rag.py                # Handles retrieval-augmented generation (RAG)
 │   └── __init__.py           # Marks the directory as a Python package
-├── data
-│   ├── sources.json          # Subject codes and their source URLs
-│   ├── notes_link.json       # Subject codes and downloadable notes links
-│   └── .gitkeep              # Keeps the data directory tracked by Git
+    ├── data
+│       ├── sources.json          # Subject codes and their source URLs
+│       ├── notes_link.json       # Subject codes and downloadable notes links
+|       |-- sub_name.json         # Subject codes matched with subject names
+│       └── .gitkeep              # Keeps the data directory tracked by Git
 ├── notes
 │   └── .gitkeep              # Keeps the notes directory tracked by Git
 ├── vector_db
