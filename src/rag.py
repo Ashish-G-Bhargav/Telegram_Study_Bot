@@ -39,7 +39,8 @@ def add_to_vdb(md_lst):
 
     client = chromadb.PersistentClient(path=db_path)
 
-    embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=embedding_model, device="cuda")
+    embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=embedding_model, device="cpu") #set device = "cuda" if nvidia gpu is available and all sowtware requirments are installed
+    
     try:
         collection = client.get_or_create_collection(name="collage_notes_database", embedding_function=embedding_function)
         collection.upsert(documents=md_lst[0], ids=md_lst[2], metadatas=md_lst[1])
@@ -55,7 +56,7 @@ def get_context(query):
 
     client = chromadb.PersistentClient(path=db_path)
 
-    embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=embedding_model, device="cuda")
+    embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=embedding_model, device="cpu") #set device = "cuda" if nvidia gpu is available and all sowtware requirments are installed
 
     try:
         collection = client.get_collection(
