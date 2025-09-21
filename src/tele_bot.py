@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from sqlalchemy import update
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 from telegram.constants import ParseMode
@@ -53,8 +54,8 @@ class StudyBotTelegram:
         self.application.add_handler(CommandHandler("subjects", self.subjects_command))
         self.application.add_handler(CommandHandler("download", self.download_command))
         self.application.add_handler(CommandHandler("ask", self.ask_command))
-        self.application.add_handler(CommandHandler("notes", self.notes_command))  # New command
-        self.application.add_handler(CommandHandler("send", self.send_notes_command))  # New command
+        self.application.add_handler(CommandHandler("notes", self.notes_command))  
+        self.application.add_handler(CommandHandler("send", self.send_notes_command))  
         
         # Callback handlers for inline keyboards
         self.application.add_handler(CallbackQueryHandler(self.button_handler))
@@ -127,7 +128,7 @@ Type /help for detailed instructions.
 • Be specific with your questions for better answers
 • Use proper subject codes (e.g., BCS503, BEC304)
 
-Need more help? Just type your question!
+
         """
         
         await update.message.reply_text(help_text, parse_mode=ParseMode.MARKDOWN)
@@ -137,29 +138,27 @@ Need more help? Just type your question!
         self.load_subjects()  # Refresh subjects list
         
         if not self.sources and not self.notes_links:
-            await update.message.reply_text(
-                "📚 No subjects available yet. Use /download to add some!"
-            )
-            return
-        
-        all_subjects = set(list(self.sources.keys()) + list(self.notes_links.keys()))
-        
-        subjects_text = "📚 **Available Subjects:**\n\n"
-        for subject in sorted(all_subjects):
-            # Check if files exist locally
-            notes_path = Path(f"notes/{subject}")
-            has_files = notes_path.exists() and any(notes_path.glob("*.pdf"))
+            message_text = "📚 No subjects available yet. Use /download to add some!"
+        else:
+            all_subjects = set(list(self.sources.keys()) + list(self.notes_links.keys()))
             
-            if has_files:
-                status = "✅📄"  # Downloaded and files available
-            elif subject in self.notes_links:
-                status = "✅"    # Downloaded but no files yet
-            else:
-                status = "📥"    # Available for download
+            subjects_text = "📚 **Available Subjects:**\n\n"
+            for subject in sorted(all_subjects):
+                # Check if files exist locally
+                notes_path = Path(f"notes/{subject}")
+                has_files = notes_path.exists() and any(notes_path.glob("*.pdf"))
+                
+                if has_files:
+                    status = "✅📄"  # Downloaded and files available
+                elif subject in self.notes_links:
+                    status = "✅"    # Downloaded but no files yet
+                else:
+                    status = "📥"    # Available for download
+                
+                subjects_text += f"{status} `{subject}`\n"
             
-            subjects_text += f"{status} `{subject}`\n"
-        
-        subjects_text += "\n✅📄 = Downloaded with files\n✅ = Downloaded\n📥 = Available for download"
+            subjects_text += "\n✅📄 = Downloaded with files\n✅ = Downloaded\n📥 = Available for download"
+            message_text = subjects_text
         
         keyboard = [
             [InlineKeyboardButton("📥 Download Materials", callback_data="download")],
@@ -168,39 +167,47 @@ Need more help? Just type your question!
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
-        await update.message.reply_text(
-            subjects_text,
-            parse_mode=ParseMode.MARKDOWN,
-            reply_markup=reply_markup
-        )
-    
+        # Handle both regular messages and callback queries
+        if update.callback_query:
+            await update.callback_query.edit_message_text(
+                message_text,
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=reply_markup
+            )
+        elif update.message:
+            await update.message.reply_text(
+                message_text,
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=reply_markup
+            )
+        
     async def notes_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle /notes command - send PDF files to user"""
-        if not context.args:
-            await update.message.reply_text(
-                "❌ **Usage:** `/notes <subject_code>`\n\n"
-                "**Example:** `/notes BCS503`\n\n"
-                "Use `/subjects` to see available subjects.",
-                parse_mode=ParseMode.MARKDOWN
-            )
-            return
+            """Handle /notes command - send PDF files to user"""
+            if not context.args:
+                await update.message.reply_text(
+                    "❌ **Usage:** `/notes <subject_code>`\n\n"
+                    "**Example:** `/notes BCS503`\n\n"
+                    "Use `/subjects` to see available subjects.",
+                    parse_mode=ParseMode.MARKDOWN
+                )
+                return
+            
+            subject_code = context.args[0].upper()
+            await self.send_notes_files(update, subject_code)
         
-        subject_code = context.args[0].upper()
-        await self.send_notes_files(update, subject_code)
-    
     async def send_notes_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle /send command - alternative to /notes"""
-        if not context.args:
-            await update.message.reply_text(
-                "❌ **Usage:** `/send <subject_code>`\n\n"
-                "**Example:** `/send BCS503`\n\n"
-                "Use `/subjects` to see available subjects.",
-                parse_mode=ParseMode.MARKDOWN
-            )
-            return
-        
-        subject_code = context.args[0].upper()
-        await self.send_notes_files(update, subject_code)
+            """Handle /send command - alternative to /notes"""
+            if not context.args:
+                await update.message.reply_text(
+                    "❌ **Usage:** `/send <subject_code>`\n\n"
+                    "**Example:** `/send BCS503`\n\n"
+                    "Use `/subjects` to see available subjects.",
+                    parse_mode=ParseMode.MARKDOWN
+                )
+                return
+            
+            subject_code = context.args[0].upper()
+            await self.send_notes_files(update, subject_code)
     
     async def send_notes_files(self, update: Update, subject_code: str):
         """Send PDF files for a specific subject"""
@@ -429,18 +436,18 @@ Need more help? Just type your question!
                 
                 await thinking_message.edit_text(
                     chunks[0],
-                    parse_mode=ParseMode.MARKDOWN
+                    parse_mode=ParseMode.HTML
                 )
                 
                 for chunk in chunks[1:]:
                     await update.message.reply_text(
                         chunk,
-                        parse_mode=ParseMode.MARKDOWN
+                        parse_mode=ParseMode.HTML
                     )
             else:
                 await thinking_message.edit_text(
                     formatted_answer,
-                    parse_mode=ParseMode.MARKDOWN
+                    parse_mode=ParseMode.HTML
                 )
         
         except Exception as e:
@@ -455,7 +462,7 @@ Need more help? Just type your question!
                 error_message += "Please wait a moment and try again."
             else:
                 error_message += f"`{str(e)}`\n\n"
-                error_message += "Please try again or contact support."
+                error_message += "Please try again later."
             
             await thinking_message.edit_text(
                 error_message,
@@ -463,13 +470,18 @@ Need more help? Just type your question!
             )
     
     async def button_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle inline keyboard button presses"""
-        query = update.callback_query
-        await query.answer()
+         """Handle inline keyboard button presses"""
+         query = update.callback_query
+         await query.answer()
         
-        if query.data == "subjects":
-            await self.subjects_command(update, context)
-        elif query.data == "download":
+         if query.data == "subjects":
+            # Create a mock update object for subjects_command
+            mock_update = Update(
+                update_id=update.update_id,
+                message=query.message
+            )
+            await self.subjects_command(mock_update, context)
+         elif query.data == "download":
             await query.edit_message_text(
                 "📥 **Download Study Materials**\n\n"
                 "Use this command format:\n"
@@ -479,7 +491,7 @@ Need more help? Just type your question!
                 "**Available branches:** cse, ece, mechanical, etc.",
                 parse_mode=ParseMode.MARKDOWN
             )
-        elif query.data == "notes":
+         elif query.data == "notes":
             await query.edit_message_text(
                 "📄 **Get Your Downloaded Notes**\n\n"
                 "Use this command format:\n"
@@ -491,7 +503,7 @@ Need more help? Just type your question!
                 "Use `/subjects` to see available subjects.",
                 parse_mode=ParseMode.MARKDOWN
             )
-        elif query.data == "ask":
+         elif query.data == "ask":
             await query.edit_message_text(
                 "❓ **Ask a Question**\n\n"
                 "Just type your question directly, or use:\n"
@@ -503,7 +515,7 @@ Need more help? Just type your question!
                 "Make sure you've downloaded relevant materials first!",
                 parse_mode=ParseMode.MARKDOWN
             )
-        elif query.data == "help":
+         elif query.data == "help":
             await self.help_command(update, context)
     
     def run(self):
