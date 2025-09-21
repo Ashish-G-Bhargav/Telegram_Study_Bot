@@ -38,9 +38,9 @@ class StudyBotTelegram:
     def load_subjects(self):
         """Load available subjects from sources.json and notes_link.json"""
         try:
-            with open("sources.json", "r") as f:
+            with open("/data/sources.json", "r") as f:
                 self.sources = json.load(f)
-            with open("notes_link.json", "r") as f:
+            with open("/data/notes_link.json", "r") as f:
                 self.notes_links = json.load(f)
         except FileNotFoundError:
             self.sources = {}
@@ -538,4 +538,5 @@ def main():
         print("Make sure TELEGRAM_BOT_TOKEN is set in your .env file")
 
 if __name__ == "__main__":
+
     main()
