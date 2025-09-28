@@ -7,15 +7,14 @@ from telegram.constants import ParseMode
 import os
 from dotenv import load_dotenv
 import json
-import threading
-import time
+
 from pathlib import Path
 
-# Import your existing modules
+
 import rag
 import scraper
 
-# Set up logging
+
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
@@ -32,23 +31,26 @@ class StudyBotTelegram:
         self.application = Application.builder().token(self.bot_token).build()
         self.setup_handlers()
         
-        # Load available subjects
+        
         self.load_subjects()
     
     def load_subjects(self):
         """Load available subjects from sources.json and notes_link.json"""
         try:
-            with open("/data/sources.json", "r") as f:
+            with open("sources.json", "r") as f:
                 self.sources = json.load(f)
-            with open("/data/notes_link.json", "r") as f:
+            with open("notes_link.json", "r") as f:
                 self.notes_links = json.load(f)
+            with open("sub_name.json", "r") as f:
+                self.sub_names = json.load(f)
         except FileNotFoundError:
             self.sources = {}
             self.notes_links = {}
-    
+            self.sub_names = {}
+
     def setup_handlers(self):
         """Set up all command and message handlers"""
-        # Commands
+       
         self.application.add_handler(CommandHandler("start", self.start_command))
         self.application.add_handler(CommandHandler("help", self.help_command))
         self.application.add_handler(CommandHandler("subjects", self.subjects_command))
@@ -57,10 +59,10 @@ class StudyBotTelegram:
         self.application.add_handler(CommandHandler("notes", self.notes_command))  
         self.application.add_handler(CommandHandler("send", self.send_notes_command))  
         
-        # Callback handlers for inline keyboards
+        
         self.application.add_handler(CallbackQueryHandler(self.button_handler))
         
-        # Message handlers
+        
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
     
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -135,28 +137,28 @@ Type /help for detailed instructions.
     
     async def subjects_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /subjects command"""
-        self.load_subjects()  # Refresh subjects list
+        self.load_subjects()  
         
         if not self.sources and not self.notes_links:
             message_text = "📚 No subjects available yet. Use /download to add some!"
         else:
-            all_subjects = set(list(self.sources.keys()) + list(self.notes_links.keys()))
+            all_subjects = set(list(self.sources.keys()) + list(self.notes_links.keys()) + list(self.sub_names.keys()))
             
             subjects_text = "📚 **Available Subjects:**\n\n"
             for subject in sorted(all_subjects):
-                # Check if files exist locally
+                
                 notes_path = Path(f"notes/{subject}")
                 has_files = notes_path.exists() and any(notes_path.glob("*.pdf"))
                 
                 if has_files:
-                    status = "✅📄"  # Downloaded and files available
+                    status = "✅📄"  
                 elif subject in self.notes_links:
-                    status = "✅"    # Downloaded but no files yet
+                    status = "✅"    
                 else:
-                    status = "📥"    # Available for download
-                
-                subjects_text += f"{status} `{subject}`\n"
-            
+                    status = "📥"    
+
+                subjects_text += f"{status} `{subject}` {self.sub_names.get(subject, '')}\n"
+
             subjects_text += "\n✅📄 = Downloaded with files\n✅ = Downloaded\n📥 = Available for download"
             message_text = subjects_text
         
@@ -167,7 +169,7 @@ Type /help for detailed instructions.
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
-        # Handle both regular messages and callback queries
+        
         if update.callback_query:
             await update.callback_query.edit_message_text(
                 message_text,
@@ -222,7 +224,7 @@ Type /help for detailed instructions.
             )
             return
         
-        # Get all PDF files
+        
         pdf_files = list(notes_path.glob("*.pdf"))
         
         if not pdf_files:
@@ -234,22 +236,22 @@ Type /help for detailed instructions.
             )
             return
         
-        # Send initial message
+        
         status_message = await update.message.reply_text(
             f"📄 **Sending {len(pdf_files)} PDF files for {subject_code}...**\n\n"
             "⏳ Please wait while I upload the files...",
             parse_mode=ParseMode.MARKDOWN
         )
         
-        # Send each PDF file
+        
         sent_files = 0
         failed_files = 0
         
         for pdf_file in pdf_files:
             try:
-                # Check file size (Telegram limit is 50MB)
+                
                 file_size = pdf_file.stat().st_size
-                if file_size > 50 * 1024 * 1024:  # 50MB
+                if file_size > 50 * 1024 * 1024:  
                     await update.message.reply_text(
                         f"⚠️ **File too large:** `{pdf_file.name}`\n"
                         f"Size: {file_size / (1024*1024):.1f}MB (Max: 50MB)\n"
@@ -259,7 +261,7 @@ Type /help for detailed instructions.
                     failed_files += 1
                     continue
                 
-                # Send the file
+                
                 with open(pdf_file, 'rb') as file:
                     await update.message.reply_document(
                         document=file,
@@ -269,7 +271,7 @@ Type /help for detailed instructions.
                     )
                 sent_files += 1
                 
-                # Add small delay to avoid rate limiting
+                
                 await asyncio.sleep(1)
                 
             except Exception as e:
@@ -281,7 +283,7 @@ Type /help for detailed instructions.
                 )
                 failed_files += 1
         
-        # Send completion message
+        
         completion_text = f"✅ **File transfer complete for {subject_code}!**\n\n"
         completion_text += f"📄 Files sent: {sent_files}\n"
         if failed_files > 0:
@@ -307,7 +309,7 @@ Type /help for detailed instructions.
         branch = context.args[0].lower()
         subject_code = context.args[1].upper()
         
-        # Send initial message
+        
         status_message = await update.message.reply_text(
             f"📥 **Downloading materials for {subject_code}...**\n\n"
             "⏳ This may take a few minutes. Please wait...",
@@ -315,22 +317,22 @@ Type /help for detailed instructions.
         )
         
         try:
-            # Run scraper in a separate thread to avoid blocking
+            
             def download_materials():
                 return scraper.get_notes(branch, subject_code)
             
-            # Use thread for blocking operation
+            
             loop = asyncio.get_event_loop()
             result = await loop.run_in_executor(None, download_materials)
             
             if result:
-                # Add to database
+                
                 def add_to_db():
                     return rag.add_to_db(subject_code)
                 
                 await loop.run_in_executor(None, add_to_db)
                 
-                # Count downloaded files
+                
                 notes_path = Path(f"notes/{subject_code}")
                 pdf_count = len(list(notes_path.glob("*.pdf"))) if notes_path.exists() else 0
                 
@@ -379,9 +381,9 @@ Type /help for detailed instructions.
         """Handle regular text messages as questions"""
         message_text = update.message.text.lower()
         
-        # Check if user is asking for notes
+        
         if any(keyword in message_text for keyword in ["send notes", "get notes", "download notes", "notes for"]):
-            # Try to extract subject code
+            
             words = update.message.text.split()
             subject_codes = [word.upper() for word in words if word.upper() in self.get_all_subjects()]
             
@@ -398,7 +400,7 @@ Type /help for detailed instructions.
                 )
                 return
         
-        # Otherwise, treat as a question
+        
         question = update.message.text
         await self.process_question(update, question)
     
@@ -409,10 +411,10 @@ Type /help for detailed instructions.
     
     async def process_question(self, update: Update, question: str):
         """Process a question using RAG"""
-        # Send typing indicator
+        
         await update.message.chat.send_action("typing")
         
-        # Send initial message
+        
         thinking_message = await update.message.reply_text(
             "🤔 **Thinking...**\n\n"
             "⏳ Searching through your study materials...",
@@ -420,18 +422,18 @@ Type /help for detailed instructions.
         )
         
         try:
-            # Get answer using RAG
+            
             loop = asyncio.get_event_loop()
             answer = await loop.run_in_executor(None, rag.ask_llm, question)
             
-            # Format the answer
+            
             formatted_answer = f"❓ **Question:** {question}\n\n"
             formatted_answer += f"🤖 **Answer:**\n{answer}\n\n"
             formatted_answer += "📚 *Based on your study materials*"
             
-            # Split long messages
+            
             if len(formatted_answer) > 4096:
-                # Split the answer into chunks
+                
                 chunks = [formatted_answer[i:i+4000] for i in range(0, len(formatted_answer), 4000)]
                 
                 await thinking_message.edit_text(
@@ -475,7 +477,7 @@ Type /help for detailed instructions.
          await query.answer()
         
          if query.data == "subjects":
-            # Create a mock update object for subjects_command
+            
             mock_update = Update(
                 update_id=update.update_id,
                 message=query.message
@@ -538,5 +540,4 @@ def main():
         print("Make sure TELEGRAM_BOT_TOKEN is set in your .env file")
 
 if __name__ == "__main__":
-
     main()
