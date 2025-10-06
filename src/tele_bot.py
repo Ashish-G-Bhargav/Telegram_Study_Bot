@@ -68,14 +68,14 @@ class StudyBotTelegram:
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /start command"""
         welcome_message = """
-🎓 **Welcome to StudyBot!** 🎓
+**Welcome to StudyBot!**
 
 I'm your AI-powered study assistant. Here's what I can do for you:
 
-📚 **Download Study Materials**: Get PDFs for your subjects
-🤖 **Answer Questions**: Ask me anything about your study materials
-📄 **Send Notes**: Get your downloaded notes as files
-📖 **Subject Management**: Browse available subjects
+**Download Study Materials**: Get PDFs for your subjects
+**Answer Questions**: Ask me anything about your study materials
+**Send Notes**: Get your downloaded notes as files
+**Subject Management**: Browse available subjects
 
 **Quick Start:**
 • Use /subjects to see available subjects
@@ -87,11 +87,11 @@ Type /help for detailed instructions.
         """
         
         keyboard = [
-            [InlineKeyboardButton("📚 View Subjects", callback_data="subjects")],
-            [InlineKeyboardButton("📥 Download Materials", callback_data="download")],
-            [InlineKeyboardButton("📄 Get Notes", callback_data="notes")],
-            [InlineKeyboardButton("❓ Ask Question", callback_data="ask")],
-            [InlineKeyboardButton("ℹ️ Help", callback_data="help")]
+            [InlineKeyboardButton("View Subjects", callback_data="subjects")],
+            [InlineKeyboardButton("Download Materials", callback_data="download")],
+            [InlineKeyboardButton("Get Notes", callback_data="notes")],
+            [InlineKeyboardButton("Ask Question", callback_data="ask")],
+            [InlineKeyboardButton("Help", callback_data="help")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
@@ -104,7 +104,7 @@ Type /help for detailed instructions.
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /help command"""
         help_text = """
-📖 **StudyBot Help Guide**
+**StudyBot Help Guide**
 
 **Available Commands:**
 • `/start` - Start the bot and see main menu
@@ -140,32 +140,32 @@ Type /help for detailed instructions.
         self.load_subjects()  
         
         if not self.sources and not self.notes_links:
-            message_text = "📚 No subjects available yet. Use /download to add some!"
+            message_text = "No subjects available yet. Use /download to add some!"
         else:
             all_subjects = set(list(self.sources.keys()) + list(self.notes_links.keys()) + list(self.sub_names.keys()))
             
-            subjects_text = "📚 **Available Subjects:**\n\n"
+            subjects_text = "**Available Subjects:**\n\n"
             for subject in sorted(all_subjects):
                 
                 notes_path = Path(f"notes/{subject}")
                 has_files = notes_path.exists() and any(notes_path.glob("*.pdf"))
                 
                 if has_files:
-                    status = "✅📄"  
+                    status = "[Downloaded with files]"  
                 elif subject in self.notes_links:
-                    status = "✅"    
+                    status = "[Downloaded]"    
                 else:
-                    status = "📥"    
+                    status = "[Available for download]"    
 
                 subjects_text += f"{status} `{subject}` {self.sub_names.get(subject, '')}\n"
 
-            subjects_text += "\n✅📄 = Downloaded with files\n✅ = Downloaded\n📥 = Available for download"
+            subjects_text += "\n[Downloaded with files] = Downloaded with files\n[Downloaded] = Downloaded\n[Available for download] = Available for download"
             message_text = subjects_text
         
         keyboard = [
-            [InlineKeyboardButton("📥 Download Materials", callback_data="download")],
-            [InlineKeyboardButton("📄 Get Notes", callback_data="notes")],
-            [InlineKeyboardButton("❓ Ask Question", callback_data="ask")]
+            [InlineKeyboardButton("Download Materials", callback_data="download")],
+            [InlineKeyboardButton("Get Notes", callback_data="notes")],
+            [InlineKeyboardButton("Ask Question", callback_data="ask")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
@@ -187,7 +187,7 @@ Type /help for detailed instructions.
             """Handle /notes command - send PDF files to user"""
             if not context.args:
                 await update.message.reply_text(
-                    "❌ **Usage:** `/notes <subject_code>`\n\n"
+                    "**Usage:** `/notes <subject_code>`\n\n"
                     "**Example:** `/notes BCS503`\n\n"
                     "Use `/subjects` to see available subjects.",
                     parse_mode=ParseMode.MARKDOWN
@@ -201,7 +201,7 @@ Type /help for detailed instructions.
             """Handle /send command - alternative to /notes"""
             if not context.args:
                 await update.message.reply_text(
-                    "❌ **Usage:** `/send <subject_code>`\n\n"
+                    "**Usage:** `/send <subject_code>`\n\n"
                     "**Example:** `/send BCS503`\n\n"
                     "Use `/subjects` to see available subjects.",
                     parse_mode=ParseMode.MARKDOWN
@@ -217,7 +217,7 @@ Type /help for detailed instructions.
         
         if not notes_path.exists():
             await update.message.reply_text(
-                f"❌ **No notes found for {subject_code}**\n\n"
+                f"**No notes found for {subject_code}**\n\n"
                 f"Use `/download <branch> {subject_code}` to download materials first.\n\n"
                 "Use `/subjects` to see available subjects.",
                 parse_mode=ParseMode.MARKDOWN
@@ -229,7 +229,7 @@ Type /help for detailed instructions.
         
         if not pdf_files:
             await update.message.reply_text(
-                f"❌ **No PDF files found for {subject_code}**\n\n"
+                f"**No PDF files found for {subject_code}**\n\n"
                 f"The notes folder exists but contains no PDF files.\n"
                 f"Try downloading again: `/download <branch> {subject_code}`",
                 parse_mode=ParseMode.MARKDOWN
@@ -238,8 +238,8 @@ Type /help for detailed instructions.
         
         
         status_message = await update.message.reply_text(
-            f"📄 **Sending {len(pdf_files)} PDF files for {subject_code}...**\n\n"
-            "⏳ Please wait while I upload the files...",
+            f"**Sending {len(pdf_files)} PDF files for {subject_code}...**\n\n"
+            "Please wait while I upload the files...",
             parse_mode=ParseMode.MARKDOWN
         )
         
@@ -253,7 +253,7 @@ Type /help for detailed instructions.
                 file_size = pdf_file.stat().st_size
                 if file_size > 50 * 1024 * 1024:  
                     await update.message.reply_text(
-                        f"⚠️ **File too large:** `{pdf_file.name}`\n"
+                        f"**File too large:** `{pdf_file.name}`\n"
                         f"Size: {file_size / (1024*1024):.1f}MB (Max: 50MB)\n"
                         f"This file cannot be sent via Telegram.",
                         parse_mode=ParseMode.MARKDOWN
@@ -266,7 +266,7 @@ Type /help for detailed instructions.
                     await update.message.reply_document(
                         document=file,
                         filename=pdf_file.name,
-                        caption=f"📄 **{subject_code}** - {pdf_file.name}\n"
+                        caption=f"**{subject_code}** - {pdf_file.name}\n"
                                f"Size: {file_size / (1024*1024):.1f}MB"
                     )
                 sent_files += 1
@@ -277,18 +277,18 @@ Type /help for detailed instructions.
             except Exception as e:
                 logger.error(f"Error sending file {pdf_file.name}: {e}")
                 await update.message.reply_text(
-                    f"❌ **Error sending:** `{pdf_file.name}`\n"
+                    f"**Error sending:** `{pdf_file.name}`\n"
                     f"Error: {str(e)[:100]}...",
                     parse_mode=ParseMode.MARKDOWN
                 )
                 failed_files += 1
         
         
-        completion_text = f"✅ **File transfer complete for {subject_code}!**\n\n"
-        completion_text += f"📄 Files sent: {sent_files}\n"
+        completion_text = f"**File transfer complete for {subject_code}!**\n\n"
+        completion_text += f"Files sent: {sent_files}\n"
         if failed_files > 0:
-            completion_text += f"❌ Failed: {failed_files}\n"
-        completion_text += f"\n📚 Total size: {sum(f.stat().st_size for f in pdf_files) / (1024*1024):.1f}MB"
+            completion_text += f"Failed: {failed_files}\n"
+        completion_text += f"\nTotal size: {sum(f.stat().st_size for f in pdf_files) / (1024*1024):.1f}MB"
         
         await status_message.edit_text(
             completion_text,
@@ -299,7 +299,7 @@ Type /help for detailed instructions.
         """Handle /download command"""
         if len(context.args) < 2:
             await update.message.reply_text(
-                "❌ **Usage:** `/download <branch> <subject_code>`\n\n"
+                "**Usage:** `/download <branch> <subject_code>`\n\n"
                 "**Example:** `/download cse BCS503`\n\n"
                 "**Available branches:** cse, ece, mechanical, etc.",
                 parse_mode=ParseMode.MARKDOWN
@@ -311,8 +311,8 @@ Type /help for detailed instructions.
         
         
         status_message = await update.message.reply_text(
-            f"📥 **Downloading materials for {subject_code}...**\n\n"
-            "⏳ This may take a few minutes. Please wait...",
+            f"**Downloading materials for {subject_code}...**\n\n"
+            "This may take a few minutes. Please wait...",
             parse_mode=ParseMode.MARKDOWN
         )
         
@@ -336,10 +336,10 @@ Type /help for detailed instructions.
                 notes_path = Path(f"notes/{subject_code}")
                 pdf_count = len(list(notes_path.glob("*.pdf"))) if notes_path.exists() else 0
                 
-                completion_text = f"✅ **Successfully downloaded {subject_code}!**\n\n"
-                completion_text += f"📚 {pdf_count} PDF files downloaded and processed\n"
-                completion_text += f"🤖 You can now ask questions about {subject_code}\n"
-                completion_text += f"📄 Use `/notes {subject_code}` to get the PDF files"
+                completion_text = f"**Successfully downloaded {subject_code}!**\n\n"
+                completion_text += f"{pdf_count} PDF files downloaded and processed\n"
+                completion_text += f"You can now ask questions about {subject_code}\n"
+                completion_text += f"Use `/notes {subject_code}` to get the PDF files"
                 
                 await status_message.edit_text(
                     completion_text,
@@ -347,7 +347,7 @@ Type /help for detailed instructions.
                 )
             else:
                 await status_message.edit_text(
-                    f"❌ **Failed to download {subject_code}**\n\n"
+                    f"**Failed to download {subject_code}**\n\n"
                     "Please check:\n"
                     "• Branch name is correct\n"
                     "• Subject code exists\n"
@@ -357,7 +357,7 @@ Type /help for detailed instructions.
         
         except Exception as e:
             await status_message.edit_text(
-                f"❌ **Error downloading {subject_code}:**\n\n"
+                f"**Error downloading {subject_code}:**\n\n"
                 f"`{str(e)}`\n\n"
                 "Please try again later.",
                 parse_mode=ParseMode.MARKDOWN
@@ -367,7 +367,7 @@ Type /help for detailed instructions.
         """Handle /ask command"""
         if not context.args:
             await update.message.reply_text(
-                "❓ **Usage:** `/ask <your question>`\n\n"
+                "**Usage:** `/ask <your question>`\n\n"
                 "**Example:** `/ask explain advantages of DBMS`\n\n"
                 "Or just type your question directly without /ask!",
                 parse_mode=ParseMode.MARKDOWN
@@ -392,7 +392,7 @@ Type /help for detailed instructions.
                 return
             else:
                 await update.message.reply_text(
-                    "📄 **To get notes, use:**\n\n"
+                    "**To get notes, use:**\n\n"
                     "`/notes <subject_code>`\n\n"
                     "**Example:** `/notes BCS503`\n\n"
                     "Use `/subjects` to see available subjects.",
@@ -409,67 +409,105 @@ Type /help for detailed instructions.
         self.load_subjects()
         return set(list(self.sources.keys()) + list(self.notes_links.keys()))
     
+    def escape_markdown_v2(self, text):
+        """Escape special characters for Telegram MarkdownV2"""
+        if not text:
+            return ""
+        
+        # Characters that need escaping in MarkdownV2
+        escape_chars = [
+            '_', '*', '[', ']', '(', ')', '~', '`', '>', 
+            '#', '+', '-', '=', '|', '{', '}', '.', '!'
+        ]
+        
+        for char in escape_chars:
+            text = text.replace(char, f'\\{char}')
+        
+        return text
+
     async def process_question(self, update: Update, question: str):
         """Process a question using RAG"""
         
+        # Send typing indicator
         await update.message.chat.send_action("typing")
         
-        
+        # Send initial message
         thinking_message = await update.message.reply_text(
-            "🤔 **Thinking...**\n\n"
-            "⏳ Searching through your study materials...",
+            "**Thinking...**\n\n"
+            "Searching through your study materials...",
             parse_mode=ParseMode.MARKDOWN
         )
         
         try:
-            
+            # Get answer using RAG
             loop = asyncio.get_event_loop()
             answer = await loop.run_in_executor(None, rag.ask_llm, question)
             
+            # Escape the content for Markdown
+            escaped_question = self.escape_markdown_v2(question)
+            escaped_answer = self.escape_markdown_v2(answer)
             
-            formatted_answer = f"❓ **Question:** {question}\n\n"
-            formatted_answer += f"🤖 **Answer:**\n{answer}\n\n"
-            formatted_answer += "📚 *Based on your study materials*"
+            # Format the answer with proper escaping
+            formatted_answer = f"**Question:** {escaped_question}\n\n"
+            formatted_answer += f"**Answer:**\n{escaped_answer}\n\n"
+            formatted_answer += "*Based on your study materials*"
             
-            
+            # Split long messages
             if len(formatted_answer) > 4096:
-                
                 chunks = [formatted_answer[i:i+4000] for i in range(0, len(formatted_answer), 4000)]
                 
-                await thinking_message.edit_text(
-                    chunks[0],
-                    parse_mode=ParseMode.HTML
-                )
-                
-                for chunk in chunks[1:]:
-                    await update.message.reply_text(
-                        chunk,
-                        parse_mode=ParseMode.HTML
+                try:
+                    await thinking_message.edit_text(
+                        chunks[0],
+                        parse_mode=ParseMode.MARKDOWN_V2  # Use MarkdownV2
+                    )
+                    
+                    for chunk in chunks[1:]:
+                        await update.message.reply_text(
+                            chunk,
+                            parse_mode=ParseMode.MARKDOWN_V2
+                        )
+                except Exception as markdown_error:
+                    # Fallback to plain text if Markdown still fails
+                    await thinking_message.edit_text(
+                        f"Question: {question}\n\nAnswer:\n{answer}\n\nBased on your study materials"
                     )
             else:
-                await thinking_message.edit_text(
-                    formatted_answer,
-                    parse_mode=ParseMode.HTML
-                )
-        
+                try:
+                    await thinking_message.edit_text(
+                        formatted_answer,
+                        parse_mode=ParseMode.MARKDOWN_V2
+                    )
+                except Exception as markdown_error:
+                    # Fallback to plain text
+                    await thinking_message.edit_text(
+                        f"Question: {question}\n\nAnswer:\n{answer}\n\nBased on your study materials"
+                    )
+    
         except Exception as e:
-            error_message = f"❌ **Error processing your question:**\n\n"
+            # Error handling code remains the same
+            error_message = f"**Error processing your question:**\n\n"
             
             if "Collection collage_notes_database not found" in str(e):
-                error_message += "📚 No study materials found!\n\n"
+                error_message += "No study materials found!\n\n"
                 error_message += "Please download some materials first using:\n"
                 error_message += "`/download <branch> <subject_code>`"
             elif "429" in str(e):
-                error_message += "⏳ **Rate limit reached**\n\n"
+                error_message += "**Rate limit reached**\n\n"
                 error_message += "Please wait a moment and try again."
             else:
-                error_message += f"`{str(e)}`\n\n"
+                error_message += f"Error: {str(e)[:200]}...\n\n"
                 error_message += "Please try again later."
             
-            await thinking_message.edit_text(
-                error_message,
-                parse_mode=ParseMode.MARKDOWN
-            )
+            try:
+                await thinking_message.edit_text(
+                    error_message,
+                    parse_mode=ParseMode.MARKDOWN
+                )
+            except:
+                await thinking_message.edit_text(
+                    f"Error processing your question: {str(e)[:300]}..."
+                )
     
     async def button_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
          """Handle inline keyboard button presses"""
@@ -485,7 +523,7 @@ Type /help for detailed instructions.
             await self.subjects_command(mock_update, context)
          elif query.data == "download":
             await query.edit_message_text(
-                "📥 **Download Study Materials**\n\n"
+                "**Download Study Materials**\n\n"
                 "Use this command format:\n"
                 "`/download <branch> <subject_code>`\n\n"
                 "**Example:**\n"
@@ -495,7 +533,7 @@ Type /help for detailed instructions.
             )
          elif query.data == "notes":
             await query.edit_message_text(
-                "📄 **Get Your Downloaded Notes**\n\n"
+                "**Get Your Downloaded Notes**\n\n"
                 "Use this command format:\n"
                 "`/notes <subject_code>`\n\n"
                 "**Examples:**\n"
@@ -507,7 +545,7 @@ Type /help for detailed instructions.
             )
          elif query.data == "ask":
             await query.edit_message_text(
-                "❓ **Ask a Question**\n\n"
+                "**Ask a Question**\n\n"
                 "Just type your question directly, or use:\n"
                 "`/ask <your question>`\n\n"
                 "**Examples:**\n"
@@ -522,7 +560,7 @@ Type /help for detailed instructions.
     
     def run(self):
         """Start the bot"""
-        print("🤖 StudyBot is starting...")
+        print("StudyBot is starting...")
         print(f"Bot token: {self.bot_token[:10]}...")
         
         self.application.run_polling(
@@ -536,7 +574,7 @@ def main():
         bot = StudyBotTelegram()
         bot.run()
     except Exception as e:
-        print(f"❌ Error starting bot: {e}")
+        print(f"Error starting bot: {e}")
         print("Make sure TELEGRAM_BOT_TOKEN is set in your .env file")
 
 if __name__ == "__main__":
