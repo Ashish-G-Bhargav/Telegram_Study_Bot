@@ -1,12 +1,14 @@
 import asyncio
 import logging
-from sqlalchemy import update
+from sqlalchemy import text, update
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 from telegram.constants import ParseMode
 import os
 from dotenv import load_dotenv
 import json
+from telegram.helpers import escape_markdown
+import re
 
 from pathlib import Path
 
@@ -408,30 +410,19 @@ Type /help for detailed instructions.
         """Get all available subject codes"""
         self.load_subjects()
         return set(list(self.sources.keys()) + list(self.notes_links.keys()))
+
+    def strip_markdown(self, text):
+
+        return re.sub(r'[*_`#\[\]\(\)-]|', '', text)
     
-    def escape_markdown_v2(self, text):
-        """Escape special characters for Telegram MarkdownV2"""
-        if not text:
-            return ""
-        
-        # Characters that need escaping in MarkdownV2
-        escape_chars = [
-            '_', '*', '[', ']', '(', ')', '~', '`', '>', 
-            '#', '+', '-', '=', '|', '{', '}', '.', '!'
-        ]
-        
-        for char in escape_chars:
-            text = text.replace(char, f'\\{char}')
-        
-        return text
 
     async def process_question(self, update: Update, question: str):
         """Process a question using RAG"""
         
-        # Send typing indicator
+        
         await update.message.chat.send_action("typing")
         
-        # Send initial message
+        
         thinking_message = await update.message.reply_text(
             "**Thinking...**\n\n"
             "Searching through your study materials...",
@@ -439,36 +430,38 @@ Type /help for detailed instructions.
         )
         
         try:
-            # Get answer using RAG
+            
             loop = asyncio.get_event_loop()
             answer = await loop.run_in_executor(None, rag.ask_llm, question)
+
+            clean_ans = self.strip_markdown(answer)
             
-            # Escape the content for Markdown
-            escaped_question = self.escape_markdown_v2(question)
-            escaped_answer = self.escape_markdown_v2(answer)
             
-            # Format the answer with proper escaping
+            escaped_question = escape_markdown(question, version=1)
+            escaped_answer = escape_markdown(clean_ans, version=1)
+
+
             formatted_answer = f"**Question:** {escaped_question}\n\n"
             formatted_answer += f"**Answer:**\n{escaped_answer}\n\n"
             formatted_answer += "*Based on your study materials*"
             
-            # Split long messages
+            
             if len(formatted_answer) > 4096:
                 chunks = [formatted_answer[i:i+4000] for i in range(0, len(formatted_answer), 4000)]
                 
                 try:
                     await thinking_message.edit_text(
                         chunks[0],
-                        parse_mode=ParseMode.MARKDOWN_V2  # Use MarkdownV2
+                        parse_mode=ParseMode.MARKDOWN  
                     )
                     
                     for chunk in chunks[1:]:
                         await update.message.reply_text(
                             chunk,
-                            parse_mode=ParseMode.MARKDOWN_V2
+                            parse_mode=ParseMode.MARKDOWN
                         )
                 except Exception as markdown_error:
-                    # Fallback to plain text if Markdown still fails
+                   
                     await thinking_message.edit_text(
                         f"Question: {question}\n\nAnswer:\n{answer}\n\nBased on your study materials"
                     )
@@ -476,16 +469,16 @@ Type /help for detailed instructions.
                 try:
                     await thinking_message.edit_text(
                         formatted_answer,
-                        parse_mode=ParseMode.MARKDOWN_V2
+                        parse_mode=ParseMode.MARKDOWN
                     )
                 except Exception as markdown_error:
-                    # Fallback to plain text
+                    
                     await thinking_message.edit_text(
                         f"Question: {question}\n\nAnswer:\n{answer}\n\nBased on your study materials"
                     )
     
         except Exception as e:
-            # Error handling code remains the same
+           
             error_message = f"**Error processing your question:**\n\n"
             
             if "Collection collage_notes_database not found" in str(e):
